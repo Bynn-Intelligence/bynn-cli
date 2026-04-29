@@ -58,28 +58,29 @@ bynn auth whoami
 ### Submit a PDF for fraud and risk analysis
 
 ```bash
-# Send a document for analysis — supports jpg, jpeg, png, pdf
+# Send a document for analysis — supports jpg, jpeg, png, pdf.
+# Returns immediately with a document_id; analysis runs asynchronously.
 bynn submit ./invoice.pdf --reference case-1234
 ```
 
-Output (default table; add `-o json` for raw JSON):
-
-```
-┌───────────────┬───────────────────────────────────┐
-│     FIELD     │               VALUE               │
-├───────────────┼───────────────────────────────────┤
-│ document_id   │ XD4PXZJ9E                         │
-│ jwt           │                                   │
-│ status        │ received                          │
-│ submission_id │ document_XpAzvcXkQYtXUPipmiWMVnGP │
-└───────────────┴───────────────────────────────────┘
-```
-
-Note the `document_id` — analysis runs asynchronously, then the result is retrievable via:
+Then fetch the result. **`bynn documents get` polls automatically by default** — it blocks (with an animated spinner on stderr) until analysis reaches a terminal state (`analyzed` or `error`), then prints the full styled report:
 
 ```bash
-# Fetch the analysis result (poll once analysis completes — usually seconds)
-bynn documents get XD4PXZJ9E -o json
+bynn documents get <document_id>
+```
+
+Want to fetch a single snapshot without blocking? Use `--no-poll`:
+
+```bash
+bynn documents get <document_id> --no-poll
+```
+
+The polling spinner is configurable:
+
+```bash
+bynn documents get <document_id> \
+    --poll-timeout 10m   \
+    --poll-interval 5s
 ```
 
 Useful flags on `submit`:
@@ -96,9 +97,9 @@ bynn submit ./id.jpg --reference case-1234 \
 # preview the JSON body that would be sent (file content redacted) without actually submitting
 bynn submit ./id.jpg --reference case-1234 --dry-run -o json
 
-# scriptable: extract just the document_id for a follow-up `documents get`
+# pipe submit + get for a one-liner
 DOC_ID=$(bynn submit ./id.jpg --reference case-1234 -o json --jq '.document_id')
-bynn documents get "$DOC_ID" -o json
+bynn documents get "$DOC_ID"
 ```
 
 ### Other common operations
@@ -133,10 +134,18 @@ Test vs. live mode is encoded in the API key prefix (`private_sandbox_...` vs. `
 ## Output formats
 
 ```bash
-bynn moderation models-all -o json
-bynn moderation models-all -o yaml
-bynn moderation models-all --jq '.[].api_name'
+bynn moderation models-all                       # default: styled table with sub-tables
+bynn moderation models-all -o json               # raw JSON
+bynn moderation models-all -o yaml               # YAML
+bynn moderation models-all --jq '.[].api_name'   # gojq filter
 ```
+
+### Notes on the table view
+
+- Status fields (`status`, `risk_status`, `analysis_risk_status`) are colored by value: green for terminal-good (`analyzed`, `low`, `verified`), yellow for in-flight (`pending`, `medium`), red for failures (`high`, `failed`, `error`).
+- URLs are replaced with the literal text `FOR URL USE JSON OUTPUT` — the table view is for scanning, full URLs are noisy. Drop to `-o json` to see them.
+- Disable colors with `--no-color`, the `NO_COLOR` env var, or by piping output to a file (auto-detected via TTY check).
+- Override terminal width with `COLUMNS=120 bynn ...` when piping into `less` or other pagers.
 
 ## Updating
 
