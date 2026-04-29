@@ -59,23 +59,26 @@ bynn auth whoami
 
 ```bash
 # Send a document for analysis — supports jpg, jpeg, png, pdf.
-# Returns immediately with a document_id; analysis runs asynchronously.
+# By default, submit blocks (with an animated spinner on stderr) until
+# analysis finishes, then prints the full styled risk report.
 bynn submit ./invoice.pdf --reference case-1234
 ```
 
-Then fetch the result. **`bynn documents get` polls automatically by default** — it blocks (with an animated spinner on stderr) until analysis reaches a terminal state (`analyzed` or `error`), then prints the full styled report:
+Want to upload and return immediately with the create response (no waiting)? Add `--no-poll`:
 
 ```bash
-bynn documents get <document_id>
+bynn submit ./invoice.pdf --no-poll
+# → document_id, submission_id, status=received — fetch the result later
 ```
 
-Want to fetch a single snapshot without blocking? Use `--no-poll`:
+You can also fetch an existing submission's result directly. **`bynn documents get` also polls by default**:
 
 ```bash
-bynn documents get <document_id> --no-poll
+bynn documents get <document_id>            # blocks until analyzed
+bynn documents get <document_id> --no-poll  # one-shot, no waiting
 ```
 
-The polling spinner is configurable:
+Polling timing is configurable on either command:
 
 ```bash
 bynn documents get <document_id> \
@@ -97,9 +100,9 @@ bynn submit ./id.jpg --reference case-1234 \
 # preview the JSON body that would be sent (file content redacted) without actually submitting
 bynn submit ./id.jpg --reference case-1234 --dry-run -o json
 
-# pipe submit + get for a one-liner
-DOC_ID=$(bynn submit ./id.jpg --reference case-1234 -o json --jq '.document_id')
-bynn documents get "$DOC_ID"
+# pipe submit + get for a one-liner (returns just the final status)
+bynn submit ./id.jpg --reference case-1234 -o json \
+    --jq '{document_id, status, analysis_risk_status, analysis_risk_score, risk_tags}'
 ```
 
 ### Other common operations
@@ -143,9 +146,10 @@ bynn moderation models-all --jq '.[].api_name'   # gojq filter
 ### Notes on the table view
 
 - Status fields (`status`, `risk_status`, `analysis_risk_status`) are colored by value: green for terminal-good (`analyzed`, `low`, `verified`), yellow for in-flight (`pending`, `medium`), red for failures (`high`, `failed`, `error`).
+- `risk_tags` entries are rendered red so flagged indicators stand out at a glance.
 - URLs are replaced with the literal text `FOR URL USE JSON OUTPUT` — the table view is for scanning, full URLs are noisy. Drop to `-o json` to see them.
 - Disable colors with `--no-color`, the `NO_COLOR` env var, or by piping output to a file (auto-detected via TTY check).
-- Override terminal width with `COLUMNS=120 bynn ...` when piping into `less` or other pagers.
+- Tables auto-fit your terminal width; override with `COLUMNS=120 bynn ...` when piping into `less` or other pagers.
 
 ## Updating
 
