@@ -52,14 +52,71 @@ bynn auth login
 
 # 2. Verify
 bynn auth whoami
+# profile=live mode=live base_url=https://api.bynn.com/v1
+```
 
-# 3. Use any endpoint exposed by the API
-bynn submit ./passport.pdf --reference case-123
-bynn sessions create --body '{"reference":"abc"}'
+### Submit a PDF for fraud and risk analysis
+
+```bash
+# Send a document for analysis — supports jpg, jpeg, png, pdf
+bynn submit ./invoice.pdf --reference case-1234
+```
+
+Output (default table; add `-o json` for raw JSON):
+
+```
+┌───────────────┬───────────────────────────────────┐
+│     FIELD     │               VALUE               │
+├───────────────┼───────────────────────────────────┤
+│ document_id   │ XD4PXZJ9E                         │
+│ jwt           │                                   │
+│ status        │ received                          │
+│ submission_id │ document_XpAzvcXkQYtXUPipmiWMVnGP │
+└───────────────┴───────────────────────────────────┘
+```
+
+Note the `document_id` — analysis runs asynchronously, then the result is retrievable via:
+
+```bash
+# Fetch the analysis result (poll once analysis completes — usually seconds)
+bynn documents get XD4PXZJ9E -o json
+```
+
+Useful flags on `submit`:
+
+```bash
+# attach metadata that travels with the submission
+bynn submit ./id.jpg --reference case-1234 \
+    --document-type passport \
+    --side front \
+    --issuing-country USA \
+    --tenant-id acme \
+    --case-id INC-42
+
+# preview the JSON body that would be sent (file content redacted) without actually submitting
+bynn submit ./id.jpg --reference case-1234 --dry-run -o json
+
+# scriptable: extract just the document_id for a follow-up `documents get`
+DOC_ID=$(bynn submit ./id.jpg --reference case-1234 -o json --jq '.document_id')
+bynn documents get "$DOC_ID" -o json
+```
+
+### Other common operations
+
+```bash
+# Identity verification sessions
+bynn sessions create --body '{"reference":"verify-abc"}'
+bynn sessions get <session_id>
+
+# AutoDoc invitations
+bynn autodoc invitations-list --all
+bynn autodoc invitations-create --body '{"...":"..."}'
+
+# Content moderation model catalog (no auth needed)
 bynn moderation models-all
 ```
 
-Run `bynn --help` to see every available command. Add `--help` to any subcommand for detailed flags and examples (sourced from the live OpenAPI spec).
+Run `bynn --help` to see every command. Append `--help` to any subcommand for detailed flags and examples (sourced from the live OpenAPI spec, so they always reflect the current API).
 
 ## Profiles
 
