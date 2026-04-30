@@ -1,12 +1,11 @@
 # bynn
 
 
-![Example](example.png)
-
-
 Command-line interface for the [BYNN Intelligence](https://bynn.com) API — identity verification, age verification, AutoDoc, document fraud analysis, NFC, content moderation, and face collections.
 
 The CLI is **auto-discovering**: every command is built at runtime from the live OpenAPI spec at `https://api.bynn.com/openapi.json`. New endpoints in the API surface in the CLI on the next invocation, with no re-install.
+
+![Example](example.png)
 
 ## Install
 
